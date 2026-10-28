@@ -61,7 +61,7 @@
           "refresh": "车需要这个：它的集成只在被要求时才去读车（特斯拉每次回应是一次计费的 vehicle data 请求）。播放器会自己更新的话可以关掉。",
           "push_on_change": "只在 DriveLyrics 屏幕开着时。不额外花钱：不读取任何东西，只发送播放器已经报告的内容。",
           "reads_per_hour": "一下子最多 20 次（切歌、点刷新），之后按小时匀开。放歌时开着屏幕每小时大约需要 15–20 次。特斯拉每读一次车（vehicle data）收 0.002 美元（Fleet API，1 美元 500 次），每月抵扣 10 美元（5000 次）。这两个上限是这台 Home Assistant 自己的保险，独立于 DriveLyrics 设置里的预算（默认每月 800 次）：不管 DriveLyrics 怎么要求，Home Assistant 读车都不会超过这里的次数。到达上限时，DriveLyrics 收到的是 Home Assistant 已有的信息，并会在屏幕上注明。",
-          "monthly_reads": "按自然月（UTC）计。给 Home Assistant 自己使用车的 API 留出余量。特斯拉每读一次车（vehicle data）收 0.002 美元（Fleet API，1 美元 500 次），每月抵扣 10 美元（5000 次）。这两个上限是这台 Home Assistant 自己的保险，独立于 DriveLyrics 设置里的预算（默认每月 800 次）：不管 DriveLyrics 怎么要求，Home Assistant 读车都不会超过这里的次数。到达上限时，DriveLyrics 收到的是 Home Assistant 已有的信息，并会在屏幕上注明。"
+          "monthly_reads": "按自然月（UTC）计。默认 3000 次（约 6 美元）在特斯拉的免费额度之内，还给 Home Assistant 自己使用车的 API 留出 2000 次。特斯拉每读一次车（vehicle data）收 0.002 美元（Fleet API，1 美元 500 次），每月抵扣 10 美元（5000 次）。这两个上限是这台 Home Assistant 自己的保险，独立于 DriveLyrics 设置里的预算（默认每月 800 次）：不管 DriveLyrics 怎么要求，Home Assistant 读车都不会超过这里的次数。到达上限时，DriveLyrics 收到的是 Home Assistant 已有的信息，并会在屏幕上注明。"
         }
       }
     }

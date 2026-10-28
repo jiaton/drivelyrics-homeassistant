@@ -17,6 +17,7 @@ from custom_components.drivelyrics.const import (
     CONF_PUSH_ON_CHANGE,
     CONF_READS_PER_HOUR,
     CONF_REFRESH,
+    DEFAULT_MONTHLY_READS,
     DOMAIN,
     ISSUE_FEED_NOT_SELECTED,
     ISSUE_READ_LIMIT_HOURLY,
@@ -345,7 +346,7 @@ async def test_monthly_read_limit(
     hass_storage[f"{DOMAIN}.{config_entry.entry_id}"] = {
         "version": 1,
         "key": f"{DOMAIN}.{config_entry.entry_id}",
-        "data": {"month": month_of(time.time()), "month_reads": 1000},
+        "data": {"month": month_of(time.time()), "month_reads": DEFAULT_MONTHLY_READS},
     }
     hass.states.async_set(PLAYER, "playing", PLAYING)
     await setup(hass, config_entry)
@@ -359,7 +360,8 @@ async def test_monthly_read_limit(
 
     # Raising the limit lifts it.
     hass.config_entries.async_update_entry(
-        config_entry, options={CONF_READS_PER_HOUR: 60, CONF_MONTHLY_READS: 2000}
+        config_entry,
+        options={CONF_READS_PER_HOUR: 60, CONF_MONTHLY_READS: DEFAULT_MONTHLY_READS + 1000},
     )
     assert await hass.config_entries.async_reload(config_entry.entry_id)
     await hass.async_block_till_done(wait_background_tasks=False)
@@ -379,7 +381,7 @@ async def test_without_refresh_nothing_is_counted(
     hass_storage[f"{DOMAIN}.{config_entry.entry_id}"] = {
         "version": 1,
         "key": f"{DOMAIN}.{config_entry.entry_id}",
-        "data": {"month": month_of(time.time()), "month_reads": 1000},
+        "data": {"month": month_of(time.time()), "month_reads": DEFAULT_MONTHLY_READS},
     }
     hass.config_entries.async_update_entry(config_entry, options={CONF_REFRESH: False})
     hass.states.async_set(PLAYER, "playing", PLAYING)

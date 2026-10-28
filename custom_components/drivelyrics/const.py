@@ -24,7 +24,7 @@ DEFAULT_PUSH_ON_CHANGE: Final = True
 # Looser than DriveLyrics' defaults (60 an hour, 800 a month), which normally stop
 # first: this one is the lock on the user's own side.
 DEFAULT_READS_PER_HOUR: Final = 60
-DEFAULT_MONTHLY_READS: Final = 1000
+DEFAULT_MONTHLY_READS: Final = 3000
 # Reads allowed in a quick burst (skipping tracks, tapping refresh) out of the hourly rate.
 BURST: Final = 20
 

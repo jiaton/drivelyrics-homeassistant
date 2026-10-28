@@ -53,9 +53,10 @@ Two limits, both yours to change:
   reads per hour. These decide when DriveLyrics asks.
 - **In Home Assistant** (this integration's options): **Car reads per hour** (default 60,
   up to 20 in a quick burst for skipping and refresh) and **Car reads per month**
-  (default 1,000). This is the lock on your side: whatever DriveLyrics asks, Home
-  Assistant reads the car no more than this, and the defaults leave most of Tesla's
-  credit for Home Assistant's own use.
+  (default 3,000, about $6). This is the lock on your side: whatever DriveLyrics asks,
+  Home Assistant reads the car no more than this. It's a backstop — DriveLyrics' own
+  budget normally stops first — and even at the cap it stays within Tesla's credit,
+  leaving 2,000 reads for Home Assistant's own use.
 
 When a limit is reached nothing goes quiet: DriveLyrics gets what Home Assistant already
 knows (no read, no cost) and says so on screen, the **Read limit** sensor shows it, and

@@ -184,7 +184,7 @@ async def test_options(hass: HomeAssistant, config_entry: MockConfigEntry) -> No
         CONF_REFRESH: False,
         CONF_PUSH_ON_CHANGE: True,
         CONF_READS_PER_HOUR: 60,
-        CONF_MONTHLY_READS: 1000,
+        CONF_MONTHLY_READS: 3000,
     }
 
     result = await hass.config_entries.options.async_init(config_entry.entry_id)
