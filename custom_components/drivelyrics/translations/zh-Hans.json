@@ -53,11 +53,15 @@
         "title": "读取播放器",
         "data": {
           "refresh": "每次回应前先刷新播放器",
-          "push_on_change": "播放器自己报告换歌时立即发送"
+          "push_on_change": "播放器自己报告换歌时立即发送",
+          "reads_per_hour": "每小时读车次数上限",
+          "monthly_reads": "每月读车次数上限"
         },
         "data_description": {
           "refresh": "车需要这个：它的集成只在被要求时才去读车（特斯拉每次回应是一次计费的 vehicle data 请求）。播放器会自己更新的话可以关掉。",
-          "push_on_change": "只在 DriveLyrics 屏幕开着时。不额外花钱：不读取任何东西，只发送播放器已经报告的内容。"
+          "push_on_change": "只在 DriveLyrics 屏幕开着时。不额外花钱：不读取任何东西，只发送播放器已经报告的内容。",
+          "reads_per_hour": "一下子最多 20 次（切歌、点刷新），之后按小时匀开。放歌时开着屏幕每小时大约需要 15–20 次。特斯拉每读一次车（vehicle data）收 0.002 美元（Fleet API，1 美元 500 次），每月抵扣 10 美元（5000 次）。这两个上限是这台 Home Assistant 自己的保险，独立于 DriveLyrics 设置里的预算（默认每月 800 次）：不管 DriveLyrics 怎么要求，Home Assistant 读车都不会超过这里的次数。到达上限时，DriveLyrics 收到的是 Home Assistant 已有的信息，并会在屏幕上注明。",
+          "monthly_reads": "按自然月（UTC）计。给 Home Assistant 自己使用车的 API 留出余量。特斯拉每读一次车（vehicle data）收 0.002 美元（Fleet API，1 美元 500 次），每月抵扣 10 美元（5000 次）。这两个上限是这台 Home Assistant 自己的保险，独立于 DriveLyrics 设置里的预算（默认每月 800 次）：不管 DriveLyrics 怎么要求，Home Assistant 读车都不会超过这里的次数。到达上限时，DriveLyrics 收到的是 Home Assistant 已有的信息，并会在屏幕上注明。"
         }
       }
     }
@@ -101,6 +105,17 @@
       },
       "fetches": {
         "name": "启动以来的请求数"
+      },
+      "reads_this_month": {
+        "name": "本月读车次数"
+      },
+      "read_limit": {
+        "name": "读车上限",
+        "state": {
+          "ok": "未到上限",
+          "hourly": "已到每小时上限",
+          "monthly": "已到每月上限"
+        }
       }
     }
   },
@@ -116,6 +131,14 @@
     "feed_not_selected": {
       "title": "DriveLyrics 没有显示 Home Assistant 发来的歌",
       "description": "Home Assistant 已经关联，但你的 DriveLyrics 屏幕显示的是 Spotify。在 DriveLyrics 里打开 设置 → 推送通道，在「正在播放来源」里选推送通道。"
+    },
+    "read_limit_hourly": {
+      "title": "DriveLyrics 读取 {name} 已到每小时上限",
+      "description": "DriveLyrics 要求的读车次数超过了每小时 {limit} 次（你在这个集成的选项里设的上限）。在上限重新允许读车之前，Home Assistant 不读车，直接回应它已有的信息，所以换歌可能显示得晚一些；DriveLyrics 屏幕上会注明。没有坏掉。如果经常这样，可以在集成选项里调高 **每小时读车次数上限**（设置 → 设备与服务 → DriveLyrics → 配置）。这条提示只出现一次；**读车上限** 传感器随时显示当前状态。"
+    },
+    "read_limit_monthly": {
+      "title": "DriveLyrics 读取 {name} 已到本月上限",
+      "description": "这个月 Home Assistant 已经为 DriveLyrics 读车 {limit} 次，到了你在集成选项里设的上限。本月结束（UTC）前，DriveLyrics 收到的是 Home Assistant 已有的信息，不再读车，所以换歌可能显示得晚一些；DriveLyrics 屏幕上会注明。要放宽，在集成选项里调高 **每月读车次数上限**（设置 → 设备与服务 → DriveLyrics → 配置）。"
     }
   }
 }

@@ -26,7 +26,12 @@ from homeassistant.core import (
 )
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import issue_registry as ir
-from homeassistant.helpers.event import async_call_later, async_track_state_change_event
+from homeassistant.helpers.event import (
+    async_call_later,
+    async_track_point_in_utc_time,
+    async_track_state_change_event,
+)
+from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
 from .api import (
@@ -40,12 +45,15 @@ from .const import (
     CHANGE_DEBOUNCE,
     DOMAIN,
     ISSUE_FEED_NOT_SELECTED,
+    ISSUE_READ_LIMIT_HOURLY,
+    ISSUE_READ_LIMIT_MONTHLY,
     LOGGER,
     MAX_REFRESH_WAIT,
     RECONNECT_MAX,
     RECONNECT_MIN,
     RECONNECT_STABLE_AFTER,
 )
+from .limits import Limited, ReadLimiter, next_month_start
 from .payload import build_payload, track_key
 
 if TYPE_CHECKING:
@@ -63,6 +71,8 @@ class BridgeStatus:
     last_push: datetime | None = None
     pushed_title: str | None = None
     fetches: int = 0
+    read_limit: str = "ok"  # "ok" | "hourly" | "monthly"
+    reads_this_month: int = 0
 
 
 class DriveLyricsBridge:
@@ -77,6 +87,8 @@ class DriveLyricsBridge:
         *,
         refresh: bool,
         push_on_change: bool,
+        limiter: ReadLimiter,
+        store: Store[dict[str, Any]],
     ) -> None:
         """Initialize."""
         self.hass = hass
@@ -85,7 +97,11 @@ class DriveLyricsBridge:
         self.player = player
         self.refresh = refresh
         self.push_on_change = push_on_change
+        self.limiter = limiter
+        self._store = store
         self.status = BridgeStatus()
+        self._cancel_limit_recheck: CALLBACK_TYPE | None = None
+        self._cancel_month_change: CALLBACK_TYPE | None = None
         self._listeners: list[CALLBACK_TYPE] = []
         self._answering: asyncio.Task[None] | None = None
         self._next_fetch_id: str | None = None
@@ -100,6 +116,12 @@ class DriveLyricsBridge:
             async_track_state_change_event(self.hass, [self.player], self._async_player_changed)
         )
         self.entry.async_on_unload(self._cancel_pending_change_push)
+        self.entry.async_on_unload(self._cancel_limit_timers)
+        self._limit_changed(self.limiter.check(time.time()) if self.refresh else None)
+
+    async def async_save(self) -> None:
+        """Store the limiter now (on unload, so a reload starts from it)."""
+        await self._store.async_save(self.limiter.as_dict())
 
     @callback
     def async_add_listener(self, update: CALLBACK_TYPE) -> Callable[[], None]:
@@ -196,9 +218,21 @@ class DriveLyricsBridge:
             await self._answer(fetch_id)
 
     async def _answer(self, fetch_id: str) -> None:
+        limited: Limited | None = None
         if self.refresh:
-            await self._refresh_player()
-        await self._push(build_payload(self.hass.states.get(self.player), fetch_id))
+            now = time.time()
+            limited = self.limiter.check(now)
+            if limited is None:
+                self.limiter.take(now)
+                self._store.async_delay_save(self.limiter.as_dict, 10)
+            self._limit_changed(limited)
+            if limited is None:
+                await self._refresh_player()
+        payload = build_payload(self.hass.states.get(self.player), fetch_id)
+        if limited is not None:
+            # Answered with what Home Assistant already has; DriveLyrics says so on screen.
+            payload["limited"] = limited
+        await self._push(payload)
 
     async def _refresh_player(self) -> None:
         """Have the player's integration read it now (for a Tesla: one vehicle_data
@@ -279,6 +313,70 @@ class DriveLyricsBridge:
         if self._cancel_change_push is not None:
             self._cancel_change_push()
             self._cancel_change_push = None
+
+    # --- This side's read limit ---------------------------------------------------
+
+    @callback
+    def _limit_changed(self, limited: Limited | None) -> None:
+        """Show the limit's state; tell the user once per kind (not on every fetch)."""
+        self._set(read_limit=limited or "ok", reads_this_month=self.limiter.month_reads)
+        hourly_issue = f"{ISSUE_READ_LIMIT_HOURLY}_{self.entry.entry_id}"
+        monthly_issue = f"{ISSUE_READ_LIMIT_MONTHLY}_{self.entry.entry_id}"
+        if limited != "hourly":
+            ir.async_delete_issue(self.hass, DOMAIN, hourly_issue)
+        if limited != "monthly":
+            ir.async_delete_issue(self.hass, DOMAIN, monthly_issue)
+        if limited == "hourly" and self.limiter.hourly_notified_rate != self.limiter.per_hour:
+            self.limiter.hourly_notified_rate = self.limiter.per_hour
+            self._create_issue(hourly_issue, ISSUE_READ_LIMIT_HOURLY, self.limiter.per_hour)
+        if limited == "monthly" and self.limiter.monthly_notified != self.limiter.month:
+            self.limiter.monthly_notified = self.limiter.month
+            self._create_issue(monthly_issue, ISSUE_READ_LIMIT_MONTHLY, self.limiter.per_month)
+        if limited is not None:
+            LOGGER.info(
+                "Read limit (%s) reached: answering without reading %s", limited, self.player
+            )
+            self._store.async_delay_save(self.limiter.as_dict, 10)
+        self._schedule_limit_timers(limited)
+
+    @callback
+    def _create_issue(self, issue_id: str, key: str, limit: int) -> None:
+        ir.async_create_issue(
+            self.hass,
+            DOMAIN,
+            issue_id,
+            is_fixable=False,
+            is_persistent=False,
+            severity=ir.IssueSeverity.WARNING,
+            translation_key=key,
+            translation_placeholders={"limit": str(limit), "name": self.entry.title},
+        )
+
+    @callback
+    def _schedule_limit_timers(self, limited: Limited | None) -> None:
+        """Look again when the bucket has a read again, and when the month turns (the
+        monthly count shown resets then).
+        """
+        self._cancel_limit_timers()
+        now = time.time()
+        if limited == "hourly":
+            self._cancel_limit_recheck = async_call_later(
+                self.hass, self.limiter.seconds_until_token(now) + 1, self._async_recheck_limit
+            )
+        self._cancel_month_change = async_track_point_in_utc_time(
+            self.hass, self._async_recheck_limit, next_month_start(now)
+        )
+
+    @callback
+    def _async_recheck_limit(self, _now: datetime) -> None:
+        self._limit_changed(self.limiter.check(time.time()) if self.refresh else None)
+
+    @callback
+    def _cancel_limit_timers(self) -> None:
+        for name in ("_cancel_limit_recheck", "_cancel_month_change"):
+            if (cancel := getattr(self, name)) is not None:
+                cancel()
+                setattr(self, name, None)
 
     @callback
     def _set(self, **changes: Any) -> None:

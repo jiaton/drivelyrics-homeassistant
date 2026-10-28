@@ -1,14 +1,39 @@
 {
   "entity": {
     "binary_sensor": {
-      "watching": { "default": "mdi:monitor-off", "state": { "on": "mdi:monitor-shimmer" } }
+      "watching": {
+        "default": "mdi:monitor-off",
+        "state": {
+          "on": "mdi:monitor-shimmer"
+        }
+      }
     },
     "sensor": {
-      "pushed_title": { "default": "mdi:music-note" },
-      "last_fetch": { "default": "mdi:download-network" },
-      "last_fetch_reason": { "default": "mdi:help-network" },
-      "last_push": { "default": "mdi:upload-network" },
-      "fetches": { "default": "mdi:counter" }
+      "pushed_title": {
+        "default": "mdi:music-note"
+      },
+      "last_fetch": {
+        "default": "mdi:download-network"
+      },
+      "last_fetch_reason": {
+        "default": "mdi:help-network"
+      },
+      "last_push": {
+        "default": "mdi:upload-network"
+      },
+      "fetches": {
+        "default": "mdi:counter"
+      },
+      "reads_this_month": {
+        "default": "mdi:car-connected"
+      },
+      "read_limit": {
+        "default": "mdi:speedometer",
+        "state": {
+          "hourly": "mdi:speedometer-slow",
+          "monthly": "mdi:wallet-outline"
+        }
+      }
     }
   }
 }

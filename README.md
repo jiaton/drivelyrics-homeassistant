@@ -34,9 +34,6 @@ over a connection Home Assistant keeps open to it. Each time, the integration ha
 player's integration read the car once, then sends title, artist, album, duration and
 position back. When no screen is open, nothing is asked.
 
-- **Cost.** For a Tesla, each answer is one Fleet API `vehicle_data` request, which Tesla
-  bills: about one per song while a screen is open, none otherwise. DriveLyrics' settings
-  have a monthly budget and an hourly cap.
 - **Privacy.** The integration gets its own key that can only send what's playing and
   receive update requests. Removing the integration removes the key; removing the key in
   DriveLyrics (Settings → Now-playing feed) makes Home Assistant ask you to link again.
@@ -44,12 +41,35 @@ position back. When no screen is open, nothing is asked.
   …) also get track changes sent the moment they happen while a screen is open. For those
   you can turn off "Refresh the player before each answer" in the integration's options.
 
+## Limits and cost
+
+For a Tesla, each answer is one Fleet API vehicle data request. Tesla bills $0.002 each
+(500 per $1) and gives a $10 monthly credit (5,000 reads). With a screen open while music
+plays that's about 15–20 reads an hour; with no screen open, none.
+
+Two limits, both yours to change:
+
+- **In DriveLyrics** (Settings → Now-playing feed): a monthly budget (default 800) and
+  reads per hour. These decide when DriveLyrics asks.
+- **In Home Assistant** (this integration's options): **Car reads per hour** (default 60,
+  up to 20 in a quick burst for skipping and refresh) and **Car reads per month**
+  (default 1,000). This is the lock on your side: whatever DriveLyrics asks, Home
+  Assistant reads the car no more than this, and the defaults leave most of Tesla's
+  credit for Home Assistant's own use.
+
+When a limit is reached nothing goes quiet: DriveLyrics gets what Home Assistant already
+knows (no read, no cost) and says so on screen, the **Read limit** sensor shows it, and
+a repair notice tells you once (once per limit you set for the hourly one, once a month
+for the monthly one), not on every request. **Car reads this month** counts every read.
+
 ## Entities
 
 | Entity | |
 |---|---|
 | Screen open | A DriveLyrics screen of yours is open (handy in automations). |
 | Now showing | The title last sent while playing. |
+| Car reads this month | Reads of the player for DriveLyrics this calendar month (UTC). |
+| Read limit | Not reached, hourly or monthly limit reached (diagnostic). |
 | Connection | The link to DriveLyrics is up (diagnostic). |
 | Last request, Last request reason, Last update sent | When and why DriveLyrics last asked, when the answer went out (diagnostic). |
 | Requests since start | Disabled by default (diagnostic). |

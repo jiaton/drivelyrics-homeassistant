@@ -3,23 +3,31 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import timedelta
+import time
 from typing import Any
 from unittest.mock import patch
 
 import pytest
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant_custom_component.common import MockConfigEntry, async_fire_time_changed
 
 from custom_components.drivelyrics.api import DriveLyricsConnectionError, Event, Me
 from custom_components.drivelyrics.const import (
+    CONF_MONTHLY_READS,
     CONF_PUSH_ON_CHANGE,
+    CONF_READS_PER_HOUR,
     CONF_REFRESH,
     DOMAIN,
     ISSUE_FEED_NOT_SELECTED,
+    ISSUE_READ_LIMIT_HOURLY,
+    ISSUE_READ_LIMIT_MONTHLY,
 )
 from custom_components.drivelyrics.diagnostics import async_get_config_entry_diagnostics
+from custom_components.drivelyrics.limits import month_of
 from homeassistant.config_entries import SOURCE_REAUTH, ConfigEntryState
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import issue_registry as ir
+from homeassistant.util import dt as dt_util
 
 from .conftest import PLAYER, FakeClient, unauthorized
 
@@ -269,3 +277,133 @@ async def test_screen_open_is_unknown_while_disconnected(
     await hass.async_block_till_done(wait_background_tasks=False)
     assert hass.states.get("binary_sensor.drivelyrics_car_connection").state == "off"
     assert hass.states.get("binary_sensor.drivelyrics_car_screen_open").state == "unavailable"
+
+
+async def test_hourly_read_limit(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    fake_client: FakeClient,
+    refreshes: list[ServiceCall],
+) -> None:
+    hass.config_entries.async_update_entry(
+        config_entry, options={CONF_READS_PER_HOUR: 1, CONF_MONTHLY_READS: 1000}
+    )
+    hass.states.async_set(PLAYER, "playing", PLAYING)
+    await setup(hass, config_entry)
+    issue_id = f"{ISSUE_READ_LIMIT_HOURLY}_{config_entry.entry_id}"
+    issues = ir.async_get(hass)
+
+    fake_client.events_queue.put_nowait(fetch("k1"))
+    assert "limited" not in await fake_client.next_push()
+    fake_client.events_queue.put_nowait(fetch("k2"))
+    pushed = await fake_client.next_push()
+    # Not read again: answered with what Home Assistant has, and DriveLyrics is told.
+    assert len(refreshes) == 1
+    assert pushed["limited"] == "hourly" and pushed["title"] == "轉眼"
+    await hass.async_block_till_done(wait_background_tasks=False)
+    assert hass.states.get("sensor.drivelyrics_car_read_limit").state == "hourly"
+    assert hass.states.get("sensor.drivelyrics_car_car_reads_this_month").state == "1"
+    assert issues.async_get_issue(DOMAIN, issue_id)
+
+    # A read is allowed again: the issue goes away by itself...
+    config_entry.runtime_data.limiter.tokens = 1.0
+    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(hours=2))
+    await hass.async_block_till_done(wait_background_tasks=False)
+    assert issues.async_get_issue(DOMAIN, issue_id) is None
+    assert hass.states.get("sensor.drivelyrics_car_read_limit").state == "ok"
+
+    # ...and isn't raised again for the same limit: told once.
+    fake_client.events_queue.put_nowait(fetch("k3"))
+    await fake_client.next_push()
+    fake_client.events_queue.put_nowait(fetch("k4"))
+    assert (await fake_client.next_push())["limited"] == "hourly"
+    await hass.async_block_till_done(wait_background_tasks=False)
+    assert issues.async_get_issue(DOMAIN, issue_id) is None
+    assert hass.states.get("sensor.drivelyrics_car_read_limit").state == "hourly"
+
+    # A new limit in the options may tell once more; the count survived the reload.
+    hass.config_entries.async_update_entry(
+        config_entry, options={CONF_READS_PER_HOUR: 2, CONF_MONTHLY_READS: 1000}
+    )
+    assert await hass.config_entries.async_reload(config_entry.entry_id)
+    await hass.async_block_till_done(wait_background_tasks=False)
+    assert config_entry.runtime_data.limiter.month_reads == 2
+    config_entry.runtime_data.limiter.tokens = 0.0
+    fake_client.events_queue.put_nowait(fetch("k5"))
+    assert (await fake_client.next_push())["limited"] == "hourly"
+    await hass.async_block_till_done(wait_background_tasks=False)
+    assert issues.async_get_issue(DOMAIN, issue_id)
+
+
+async def test_monthly_read_limit(
+    hass: HomeAssistant,
+    hass_storage: dict[str, Any],
+    config_entry: MockConfigEntry,
+    fake_client: FakeClient,
+    refreshes: list[ServiceCall],
+) -> None:
+    hass_storage[f"{DOMAIN}.{config_entry.entry_id}"] = {
+        "version": 1,
+        "key": f"{DOMAIN}.{config_entry.entry_id}",
+        "data": {"month": month_of(time.time()), "month_reads": 1000},
+    }
+    hass.states.async_set(PLAYER, "playing", PLAYING)
+    await setup(hass, config_entry)
+    issue_id = f"{ISSUE_READ_LIMIT_MONTHLY}_{config_entry.entry_id}"
+    assert ir.async_get(hass).async_get_issue(DOMAIN, issue_id)  # known at setup
+    assert hass.states.get("sensor.drivelyrics_car_read_limit").state == "monthly"
+
+    fake_client.events_queue.put_nowait(fetch("k1"))
+    assert (await fake_client.next_push())["limited"] == "monthly"
+    assert refreshes == []
+
+    # Raising the limit lifts it.
+    hass.config_entries.async_update_entry(
+        config_entry, options={CONF_READS_PER_HOUR: 60, CONF_MONTHLY_READS: 2000}
+    )
+    assert await hass.config_entries.async_reload(config_entry.entry_id)
+    await hass.async_block_till_done(wait_background_tasks=False)
+    assert ir.async_get(hass).async_get_issue(DOMAIN, issue_id) is None
+    fake_client.events_queue.put_nowait(fetch("k2"))
+    assert "limited" not in await fake_client.next_push()
+    assert len(refreshes) == 1
+
+
+async def test_without_refresh_nothing_is_counted(
+    hass: HomeAssistant,
+    hass_storage: dict[str, Any],
+    config_entry: MockConfigEntry,
+    fake_client: FakeClient,
+    refreshes: list[ServiceCall],
+) -> None:
+    hass_storage[f"{DOMAIN}.{config_entry.entry_id}"] = {
+        "version": 1,
+        "key": f"{DOMAIN}.{config_entry.entry_id}",
+        "data": {"month": month_of(time.time()), "month_reads": 1000},
+    }
+    hass.config_entries.async_update_entry(config_entry, options={CONF_REFRESH: False})
+    hass.states.async_set(PLAYER, "playing", PLAYING)
+    await setup(hass, config_entry)
+    fake_client.events_queue.put_nowait(fetch("k1"))
+    assert "limited" not in await fake_client.next_push()
+    await hass.async_block_till_done(wait_background_tasks=False)
+    assert hass.states.get("sensor.drivelyrics_car_read_limit").state == "ok"
+
+
+async def test_reads_are_stored_on_unload_and_removed_with_the_entry(
+    hass: HomeAssistant,
+    hass_storage: dict[str, Any],
+    config_entry: MockConfigEntry,
+    fake_client: FakeClient,
+    refreshes: list[ServiceCall],
+) -> None:
+    hass.states.async_set(PLAYER, "playing", PLAYING)
+    await setup(hass, config_entry)
+    fake_client.events_queue.put_nowait(fetch("k1"))
+    await fake_client.next_push()
+    assert await hass.config_entries.async_unload(config_entry.entry_id)
+    key = f"{DOMAIN}.{config_entry.entry_id}"
+    assert hass_storage[key]["data"]["month_reads"] == 1
+    assert await hass.config_entries.async_remove(config_entry.entry_id)
+    await hass.async_block_till_done()
+    assert key not in hass_storage

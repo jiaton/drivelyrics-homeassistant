@@ -26,6 +26,9 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import (
     EntitySelector,
     EntitySelectorConfig,
+    NumberSelector,
+    NumberSelectorConfig,
+    NumberSelectorMode,
     SelectOptionDict,
     SelectSelector,
     SelectSelectorConfig,
@@ -36,11 +39,15 @@ from .api import DEFAULT_SERVER, DriveLyricsClient, DriveLyricsError, LinkStarte
 from .const import (
     CAR_PLATFORMS,
     CLIENT_NAME,
+    CONF_MONTHLY_READS,
     CONF_PLAYER,
     CONF_PUSH_ON_CHANGE,
+    CONF_READS_PER_HOUR,
     CONF_REFRESH,
     CONF_SERVER,
+    DEFAULT_MONTHLY_READS,
     DEFAULT_PUSH_ON_CHANGE,
+    DEFAULT_READS_PER_HOUR,
     DEFAULT_REFRESH,
     DOMAIN,
     LOGGER,
@@ -288,6 +295,8 @@ class OptionsFlowHandler(OptionsFlowWithReload):
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Manage the options."""
         if user_input is not None:
+            for key in (CONF_READS_PER_HOUR, CONF_MONTHLY_READS):
+                user_input[key] = int(user_input[key])
             return self.async_create_entry(data=user_input)
         options = self.config_entry.options
         return self.async_show_form(
@@ -301,6 +310,18 @@ class OptionsFlowHandler(OptionsFlowWithReload):
                         CONF_PUSH_ON_CHANGE,
                         default=options.get(CONF_PUSH_ON_CHANGE, DEFAULT_PUSH_ON_CHANGE),
                     ): bool,
+                    vol.Required(
+                        CONF_READS_PER_HOUR,
+                        default=options.get(CONF_READS_PER_HOUR, DEFAULT_READS_PER_HOUR),
+                    ): NumberSelector(
+                        NumberSelectorConfig(min=1, max=600, step=1, mode=NumberSelectorMode.BOX)
+                    ),
+                    vol.Required(
+                        CONF_MONTHLY_READS,
+                        default=options.get(CONF_MONTHLY_READS, DEFAULT_MONTHLY_READS),
+                    ): NumberSelector(
+                        NumberSelectorConfig(min=50, max=20000, step=1, mode=NumberSelectorMode.BOX)
+                    ),
                 }
             ),
         )

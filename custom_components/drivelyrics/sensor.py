@@ -1,4 +1,4 @@
-"""Sensors: the last fetch DriveLyrics asked for, and what was pushed."""
+"""Sensors: the last fetch DriveLyrics asked for, what was pushed, and reads of the player."""
 
 from __future__ import annotations
 
@@ -22,6 +22,7 @@ from .entity import DriveLyricsEntity
 
 PARALLEL_UPDATES = 0
 
+READ_LIMIT_STATES = ["ok", "hourly", "monthly"]
 FETCH_REASONS = ["opened", "track_ending", "skip_check", "paused_check", "refresh", "retry"]
 
 
@@ -37,6 +38,20 @@ SENSORS: tuple[DriveLyricsSensorDescription, ...] = (
         key="pushed_title",
         translation_key="pushed_title",
         value_fn=lambda status: status.pushed_title,
+    ),
+    DriveLyricsSensorDescription(
+        key="reads_this_month",
+        translation_key="reads_this_month",
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        value_fn=lambda status: status.reads_this_month,
+    ),
+    DriveLyricsSensorDescription(
+        key="read_limit",
+        translation_key="read_limit",
+        device_class=SensorDeviceClass.ENUM,
+        options=READ_LIMIT_STATES,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda status: status.read_limit,
     ),
     DriveLyricsSensorDescription(
         key="last_fetch",

@@ -26,6 +26,12 @@ async def async_get_config_entry_diagnostics(
             "options": dict(entry.options),
         },
         "status": asdict(bridge.status),
+        "read_limit": {
+            "per_hour": bridge.limiter.per_hour,
+            "per_month": bridge.limiter.per_month,
+            "capacity": bridge.limiter.capacity,
+            **bridge.limiter.as_dict(),
+        },
         "player": {
             "state": player.state if player else None,
             "attributes": sorted(player.attributes) if player else None,

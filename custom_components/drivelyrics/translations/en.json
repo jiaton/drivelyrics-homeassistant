@@ -53,11 +53,15 @@
         "title": "Reading the player",
         "data": {
           "refresh": "Refresh the player before each answer",
-          "push_on_change": "Send track changes as soon as the player reports them"
+          "push_on_change": "Send track changes as soon as the player reports them",
+          "reads_per_hour": "Car reads per hour",
+          "monthly_reads": "Car reads per month"
         },
         "data_description": {
           "refresh": "Needed for a car: its integration only reads the car when asked (for a Tesla, one billed vehicle data request per answer). Turn off for players that update on their own.",
-          "push_on_change": "While a DriveLyrics screen is open. Costs nothing extra: nothing is read, what the player already reported is sent."
+          "push_on_change": "While a DriveLyrics screen is open. Costs nothing extra: nothing is read, what the player already reported is sent.",
+          "reads_per_hour": "Up to 20 of them at once (skipping tracks, tapping refresh), then spread over the hour. A screen open while music plays needs about 15–20 an hour. Tesla bills $0.002 per vehicle data read (Fleet API, 500 per $1) and gives a $10 monthly credit (5,000 reads). These limits are this Home Assistant's own safety lock, on top of the budget in DriveLyrics' settings (default 800 a month): whatever DriveLyrics asks, Home Assistant reads the car no more than this. When a limit is reached, DriveLyrics gets what Home Assistant already knows instead, and says so on screen.",
+          "monthly_reads": "Counted per calendar month (UTC). Leave room for Home Assistant's own use of the car's API. Tesla bills $0.002 per vehicle data read (Fleet API, 500 per $1) and gives a $10 monthly credit (5,000 reads). These limits are this Home Assistant's own safety lock, on top of the budget in DriveLyrics' settings (default 800 a month): whatever DriveLyrics asks, Home Assistant reads the car no more than this. When a limit is reached, DriveLyrics gets what Home Assistant already knows instead, and says so on screen."
         }
       }
     }
@@ -101,6 +105,17 @@
       },
       "fetches": {
         "name": "Requests since start"
+      },
+      "reads_this_month": {
+        "name": "Car reads this month"
+      },
+      "read_limit": {
+        "name": "Read limit",
+        "state": {
+          "ok": "Not reached",
+          "hourly": "Hourly limit reached",
+          "monthly": "Monthly limit reached"
+        }
       }
     }
   },
@@ -116,6 +131,14 @@
     "feed_not_selected": {
       "title": "DriveLyrics isn't showing what Home Assistant sends",
       "description": "Home Assistant is linked, but your DriveLyrics screens show Spotify instead. In DriveLyrics, open Settings → Now-playing feed and choose the feed under \"Now playing from\"."
+    },
+    "read_limit_hourly": {
+      "title": "DriveLyrics reached its hourly limit for reading {name}",
+      "description": "DriveLyrics asked for more than {limit} car reads an hour (the limit you set in this integration's options). Until the limit allows a read again, Home Assistant answers with what it already knows without reading the car, so a track change can show late; the DriveLyrics screen says so. Nothing is broken. If this happens often, raise **Car reads per hour** in the integration's options (Settings → Devices & services → DriveLyrics → Configure). You are told this once; the **Read limit** sensor always shows the current state."
+    },
+    "read_limit_monthly": {
+      "title": "DriveLyrics reached this month's limit for reading {name}",
+      "description": "This month Home Assistant has read the car {limit} times for DriveLyrics, the limit you set in this integration's options. Until the month ends (UTC), DriveLyrics gets what Home Assistant already knows without reading the car, so track changes can show late; the DriveLyrics screen says so. To allow more, raise **Car reads per month** in the integration's options (Settings → Devices & services → DriveLyrics → Configure)."
     }
   }
 }

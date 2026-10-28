@@ -10,8 +10,10 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.drivelyrics.api import DriveLyricsConnectionError, LinkStarted
 from custom_components.drivelyrics.const import (
+    CONF_MONTHLY_READS,
     CONF_PLAYER,
     CONF_PUSH_ON_CHANGE,
+    CONF_READS_PER_HOUR,
     CONF_REFRESH,
     CONF_SERVER,
     DOMAIN,
@@ -178,7 +180,25 @@ async def test_options(hass: HomeAssistant, config_entry: MockConfigEntry) -> No
         result["flow_id"], {CONF_REFRESH: False, CONF_PUSH_ON_CHANGE: True}
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY
-    assert config_entry.options == {CONF_REFRESH: False, CONF_PUSH_ON_CHANGE: True}
+    assert config_entry.options == {
+        CONF_REFRESH: False,
+        CONF_PUSH_ON_CHANGE: True,
+        CONF_READS_PER_HOUR: 60,
+        CONF_MONTHLY_READS: 1000,
+    }
+
+    result = await hass.config_entries.options.async_init(config_entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {
+            CONF_REFRESH: True,
+            CONF_PUSH_ON_CHANGE: True,
+            CONF_READS_PER_HOUR: 30.0,
+            CONF_MONTHLY_READS: 600.0,
+        },
+    )
+    assert config_entry.options[CONF_READS_PER_HOUR] == 30  # stored as whole numbers
+    assert config_entry.options[CONF_MONTHLY_READS] == 600
 
 
 async def test_declining_to_enable_lets_you_pick_another(
