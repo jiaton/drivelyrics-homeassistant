@@ -212,6 +212,7 @@ async def test_reconnects_after_a_dropped_stream(
             if fake_client.connections == 2:
                 break
         assert fake_client.connections == 2
+        await hass.async_block_till_done()
         fake_client.events_queue.put_nowait(fetch("k2"))
         assert (await fake_client.next_push())["fetch_id"] == "k2"
         await hass.async_block_till_done()
@@ -252,3 +253,19 @@ async def test_removing_the_entry_revokes_its_token(
     assert await hass.config_entries.async_remove(config_entry.entry_id)
     await hass.async_block_till_done()
     assert fake_client.forgotten
+
+
+async def test_screen_open_is_unknown_while_disconnected(
+    hass: HomeAssistant, config_entry: MockConfigEntry, fake_client: FakeClient
+) -> None:
+    await setup(hass, config_entry)
+    fake_client.events_queue.put_nowait(fetch("k1"))
+    await fake_client.next_push()
+    await hass.async_block_till_done(wait_background_tasks=False)
+    assert hass.states.get("binary_sensor.drivelyrics_car_screen_open").state == "on"
+    fake_client.events_queue.put_nowait(DriveLyricsConnectionError("reset"))
+    for _ in range(20):
+        await asyncio.sleep(0)
+    await hass.async_block_till_done(wait_background_tasks=False)
+    assert hass.states.get("binary_sensor.drivelyrics_car_connection").state == "off"
+    assert hass.states.get("binary_sensor.drivelyrics_car_screen_open").state == "unavailable"

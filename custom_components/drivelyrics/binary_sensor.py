@@ -26,6 +26,8 @@ class DriveLyricsBinarySensorDescription(BinarySensorEntityDescription):
     """Describes a DriveLyrics binary sensor."""
 
     is_on_fn: Callable[[BridgeStatus], bool]
+    # Only DriveLyrics knows, so unknown while the link is down.
+    needs_connection: bool = True
 
 
 BINARY_SENSORS: tuple[DriveLyricsBinarySensorDescription, ...] = (
@@ -35,6 +37,7 @@ BINARY_SENSORS: tuple[DriveLyricsBinarySensorDescription, ...] = (
         device_class=BinarySensorDeviceClass.CONNECTIVITY,
         entity_category=EntityCategory.DIAGNOSTIC,
         is_on_fn=lambda status: status.connected,
+        needs_connection=False,
     ),
     DriveLyricsBinarySensorDescription(
         key="watching",
@@ -59,6 +62,11 @@ class DriveLyricsBinarySensor(DriveLyricsEntity, BinarySensorEntity):
     """A DriveLyrics binary sensor."""
 
     entity_description: DriveLyricsBinarySensorDescription
+
+    @property
+    def available(self) -> bool:
+        """Return if the state is known."""
+        return self.bridge.status.connected or not self.entity_description.needs_connection
 
     @property
     def is_on(self) -> bool:
