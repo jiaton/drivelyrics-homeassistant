@@ -1,0 +1,119 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "用哪个播放器？",
+        "description": "DriveLyrics 会为这个媒体播放器正在放的歌显示同步歌词——在车机屏幕、手机或任何浏览器上。",
+        "data": {
+          "player": "媒体播放器",
+          "server": "DriveLyrics 服务器"
+        },
+        "data_description": {
+          "player": "特斯拉：选 Tesla Fleet、Teslemetry 或 Tessie 集成里车的媒体播放器。",
+          "server": "只有自己部署 DriveLyrics 时才需要改。"
+        }
+      },
+      "enable_player": {
+        "title": "打开车的媒体播放器？",
+        "description": "车的媒体播放器在 Home Assistant 里是关着的（Tesla Fleet 默认如此）。DriveLyrics 要靠它知道正在放什么。现在打开吗？",
+        "data": {
+          "player": "媒体播放器"
+        }
+      },
+      "link": {
+        "title": "在 DriveLyrics 里同意",
+        "description": "打开 DriveLyrics，需要的话先登录，确认显示的码是 **{code}**，然后点 **同意**。这个窗口会自己继续。"
+      },
+      "reauth_confirm": {
+        "title": "重新关联 DriveLyrics",
+        "description": "DriveLyrics 不再接受这个关联（在 DriveLyrics 设置里被移除了）。重新关联后就能继续显示歌词。"
+      },
+      "reconfigure": {
+        "title": "换一个播放器",
+        "data": {
+          "player": "媒体播放器"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "这个播放器已经关联过 DriveLyrics 了。",
+      "cannot_connect": "连不上 DriveLyrics。检查网络后再试。",
+      "link_denied": "在 DriveLyrics 里拒绝了关联，没有关联任何东西。",
+      "link_expired": "关联在同意之前过期了，请重新开始。",
+      "player_gone": "这个媒体播放器已经不存在了。",
+      "reauth_successful": "重新关联好了。",
+      "reconfigure_successful": "已保存。"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "读取播放器",
+        "data": {
+          "refresh": "每次回应前先刷新播放器",
+          "push_on_change": "播放器自己报告换歌时立即发送"
+        },
+        "data_description": {
+          "refresh": "车需要这个：它的集成只在被要求时才去读车（特斯拉每次回应是一次计费的 vehicle data 请求）。播放器会自己更新的话可以关掉。",
+          "push_on_change": "只在 DriveLyrics 屏幕开着时。不额外花钱：不读取任何东西，只发送播放器已经报告的内容。"
+        }
+      }
+    }
+  },
+  "selector": {
+    "enable_player": {
+      "options": {
+        "other": "不，选别的播放器"
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "connected": {
+        "name": "连接"
+      },
+      "watching": {
+        "name": "屏幕打开"
+      }
+    },
+    "sensor": {
+      "pushed_title": {
+        "name": "正在显示"
+      },
+      "last_fetch": {
+        "name": "最近一次请求"
+      },
+      "last_fetch_reason": {
+        "name": "最近一次请求原因",
+        "state": {
+          "opened": "打开了屏幕",
+          "track_ending": "歌曲快结束",
+          "skip_check": "切歌检查",
+          "paused_check": "暂停检查",
+          "refresh": "点了刷新",
+          "retry": "重试"
+        }
+      },
+      "last_push": {
+        "name": "最近一次发送"
+      },
+      "fetches": {
+        "name": "启动以来的请求数"
+      }
+    }
+  },
+  "exceptions": {
+    "auth_failed": {
+      "message": "DriveLyrics 不再接受这个关联。"
+    },
+    "cannot_connect": {
+      "message": "连不上 DriveLyrics：{error}"
+    }
+  },
+  "issues": {
+    "feed_not_selected": {
+      "title": "DriveLyrics 没有显示 Home Assistant 发来的歌",
+      "description": "Home Assistant 已经关联，但你的 DriveLyrics 屏幕显示的是 Spotify。在 DriveLyrics 里打开 设置 → 推送通道，在「正在播放来源」里选推送通道。"
+    }
+  }
+}

@@ -1,0 +1,119 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Which player?",
+        "description": "DriveLyrics shows synced lyrics for what this media player plays — on your car's screen, a phone or any browser.",
+        "data": {
+          "player": "Media player",
+          "server": "DriveLyrics server"
+        },
+        "data_description": {
+          "player": "For a Tesla: the car's media player from the Tesla Fleet, Teslemetry or Tessie integration.",
+          "server": "Only change this if you run DriveLyrics yourself."
+        }
+      },
+      "enable_player": {
+        "title": "Turn on your car's media player?",
+        "description": "Your car's media player is turned off in Home Assistant (Tesla Fleet ships it that way). DriveLyrics needs it to know what's playing. Turn it on now?",
+        "data": {
+          "player": "Media player"
+        }
+      },
+      "link": {
+        "title": "Approve in DriveLyrics",
+        "description": "Open DriveLyrics, sign in if asked, check that it shows the code **{code}** and tap **Approve**. This window carries on by itself."
+      },
+      "reauth_confirm": {
+        "title": "Link DriveLyrics again",
+        "description": "DriveLyrics no longer accepts this link (it was removed in DriveLyrics' settings). Link again to keep showing lyrics."
+      },
+      "reconfigure": {
+        "title": "Use another player",
+        "data": {
+          "player": "Media player"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "This player is already linked to DriveLyrics.",
+      "cannot_connect": "Could not reach DriveLyrics. Check the internet connection and try again.",
+      "link_denied": "The link was denied in DriveLyrics. Nothing was linked.",
+      "link_expired": "The link expired before it was approved. Start again.",
+      "player_gone": "That media player no longer exists.",
+      "reauth_successful": "Linked again.",
+      "reconfigure_successful": "Saved."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Reading the player",
+        "data": {
+          "refresh": "Refresh the player before each answer",
+          "push_on_change": "Send track changes as soon as the player reports them"
+        },
+        "data_description": {
+          "refresh": "Needed for a car: its integration only reads the car when asked (for a Tesla, one billed vehicle data request per answer). Turn off for players that update on their own.",
+          "push_on_change": "While a DriveLyrics screen is open. Costs nothing extra: nothing is read, what the player already reported is sent."
+        }
+      }
+    }
+  },
+  "selector": {
+    "enable_player": {
+      "options": {
+        "other": "No, choose another player"
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "connected": {
+        "name": "Connection"
+      },
+      "watching": {
+        "name": "Screen open"
+      }
+    },
+    "sensor": {
+      "pushed_title": {
+        "name": "Now showing"
+      },
+      "last_fetch": {
+        "name": "Last request"
+      },
+      "last_fetch_reason": {
+        "name": "Last request reason",
+        "state": {
+          "opened": "Screen opened",
+          "track_ending": "Track ending",
+          "skip_check": "Skip check",
+          "paused_check": "Paused check",
+          "refresh": "Refresh tapped",
+          "retry": "Retry"
+        }
+      },
+      "last_push": {
+        "name": "Last update sent"
+      },
+      "fetches": {
+        "name": "Requests since start"
+      }
+    }
+  },
+  "exceptions": {
+    "auth_failed": {
+      "message": "DriveLyrics no longer accepts this link."
+    },
+    "cannot_connect": {
+      "message": "Could not reach DriveLyrics: {error}"
+    }
+  },
+  "issues": {
+    "feed_not_selected": {
+      "title": "DriveLyrics isn't showing what Home Assistant sends",
+      "description": "Home Assistant is linked, but your DriveLyrics screens show Spotify instead. In DriveLyrics, open Settings → Now-playing feed and choose the feed under \"Now playing from\"."
+    }
+  }
+}
