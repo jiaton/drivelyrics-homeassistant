@@ -180,3 +180,41 @@ async def test_options(hass: HomeAssistant, config_entry: MockConfigEntry) -> No
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert config_entry.options == {CONF_REFRESH: False, CONF_PUSH_ON_CHANGE: True}
+
+
+async def test_declining_to_enable_lets_you_pick_another(
+    hass: HomeAssistant, link_client: AsyncMock
+) -> None:
+    car_integration = MockConfigEntry(domain="tesla_fleet")
+    car_integration.add_to_hass(hass)
+    er.async_get(hass).async_get_or_create(
+        "media_player",
+        "tesla_fleet",
+        "vin-media",
+        config_entry=car_integration,
+        disabled_by=er.RegistryEntryDisabler.INTEGRATION,
+    )
+    hass.states.async_set("media_player.kitchen", "idle")
+    result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_USER})
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_PLAYER: "other"}
+    )
+    assert result["step_id"] == "user"
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_PLAYER: "media_player.kitchen"}
+    )
+    assert result["type"] is FlowResultType.EXTERNAL_STEP
+
+
+async def test_self_hosted_server_in_advanced_mode(
+    hass: HomeAssistant, link_client: AsyncMock
+) -> None:
+    hass.states.async_set(PLAYER, "idle")
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER, "show_advanced_options": True}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_PLAYER: PLAYER, CONF_SERVER: "https://lyrics.example.org/"}
+    )
+    result = await _until_done(hass, result["flow_id"])
+    assert result["data"][CONF_SERVER] == "https://lyrics.example.org"

@@ -4,6 +4,8 @@ Synced lyrics on your car's screen — or any browser — for whatever a Home As
 media player is playing. Made for a Tesla's media player (Tesla Fleet, Teslemetry,
 Tessie), works with any `media_player`.
 
+[中文说明](README.zh-CN.md)
+
 [DriveLyrics](https://drivelyrics.com) normally reads Spotify. With this integration it
 shows lyrics for what your **car** plays instead — Spotify, Apple Music, Bluetooth,
 radio — with no Spotify account needed.
