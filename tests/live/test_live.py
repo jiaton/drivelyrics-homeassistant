@@ -71,7 +71,7 @@ async def test_live(hass: HomeAssistant, socket_enabled: None) -> None:
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"], {CONF_PLAYER: PLAYER, CONF_SERVER: SERVER}
         )
-        assert result["type"] is FlowResultType.EXTERNAL_STEP
+        assert result["type"] is FlowResultType.SHOW_PROGRESS
         code = result["description_placeholders"]["code"]
         info = await (await user.get(f"{SERVER}/api/feed/link", params={"code": code})).json()
         assert info["client_name"] == "Home Assistant"
@@ -80,11 +80,11 @@ async def test_live(hass: HomeAssistant, socket_enabled: None) -> None:
         ).status == 200
         await user.put(f"{SERVER}/api/now-playing/source", json={"source": "feed"})
 
-        for _ in range(100):  # the flow polls every 3 s and advances itself
+        for _ in range(100):  # the flow polls every 3 s
             await asyncio.sleep(0.1)
             if hass.config_entries.flow.async_get(result["flow_id"])["step_id"] == "finish":
                 break
-        # What the frontend does on seeing the external step done:
+        # What the frontend does when the progress ends:
         result = await hass.config_entries.flow.async_configure(result["flow_id"])
         assert result["type"] is FlowResultType.CREATE_ENTRY
         entries = hass.config_entries.async_entries(DOMAIN)

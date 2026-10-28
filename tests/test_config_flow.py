@@ -51,7 +51,7 @@ def no_setup() -> None:
 
 
 async def _until_done(hass: HomeAssistant, flow_id: str) -> dict[str, Any]:
-    """Let the poll finish; it advances the flow itself."""
+    """Let the poll finish, then do what the frontend does when the progress ends."""
     await hass.async_block_till_done()
     return await hass.config_entries.flow.async_configure(flow_id)
 
@@ -64,10 +64,9 @@ async def test_user_links_by_approval(hass: HomeAssistant, link_client: AsyncMoc
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], {CONF_PLAYER: PLAYER}
     )
-    assert result["type"] is FlowResultType.EXTERNAL_STEP
-    assert result["url"] == LINK.verify_url and result["description_placeholders"] == {
-        "code": "ABCD-EFGH"
-    }
+    assert result["type"] is FlowResultType.SHOW_PROGRESS
+    assert result["progress_action"] == "wait_for_approval"
+    assert result["description_placeholders"] == {"url": LINK.verify_url, "code": "ABCD-EFGH"}
     link_client.link_start.assert_awaited_once_with("Home Assistant")
 
     result = await _until_done(hass, result["flow_id"])
@@ -140,7 +139,7 @@ async def test_turns_on_a_disabled_car_player(hass: HomeAssistant, link_client: 
         )
     assert registry.async_get(entity.entity_id).disabled_by is None
     reload.assert_awaited_once_with(car_integration.entry_id)
-    assert result["type"] is FlowResultType.EXTERNAL_STEP
+    assert result["type"] is FlowResultType.SHOW_PROGRESS
     result = await _until_done(hass, result["flow_id"])
     assert result["data"][CONF_PLAYER] == entity.entity_id
 
@@ -151,7 +150,7 @@ async def test_reauth_links_again(
     result = await config_entry.start_reauth_flow(hass)
     assert result["step_id"] == "reauth_confirm"
     result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
-    assert result["type"] is FlowResultType.EXTERNAL_STEP
+    assert result["type"] is FlowResultType.SHOW_PROGRESS
     result = await _until_done(hass, result["flow_id"])
     assert result["type"] is FlowResultType.ABORT and result["reason"] == "reauth_successful"
     assert config_entry.data[CONF_TOKEN] == "dlf_new" and config_entry.data[CONF_PLAYER] == PLAYER
@@ -203,7 +202,7 @@ async def test_declining_to_enable_lets_you_pick_another(
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], {CONF_PLAYER: "media_player.kitchen"}
     )
-    assert result["type"] is FlowResultType.EXTERNAL_STEP
+    assert result["type"] is FlowResultType.SHOW_PROGRESS
 
 
 async def test_self_hosted_server_in_advanced_mode(

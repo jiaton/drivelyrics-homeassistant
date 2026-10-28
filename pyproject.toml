@@ -1,6 +1,6 @@
 [project]
 name = "drivelyrics-homeassistant"
-version = "0.1.0"
+version = "0.1.1"
 description = "Home Assistant integration for DriveLyrics' now-playing feed"
 requires-python = ">=3.13"
 

@@ -21,8 +21,7 @@
         }
       },
       "link": {
-        "title": "Approve in DriveLyrics",
-        "description": "Open DriveLyrics, sign in if asked, check that it shows the code **{code}** and tap **Approve**. This window carries on by itself."
+        "title": "Approve in DriveLyrics"
       },
       "reauth_confirm": {
         "title": "Link DriveLyrics again",
@@ -43,6 +42,9 @@
       "player_gone": "That media player no longer exists.",
       "reauth_successful": "Linked again.",
       "reconfigure_successful": "Saved."
+    },
+    "progress": {
+      "wait_for_approval": "Open [DriveLyrics]({url}), sign in if asked, check that it shows the code **{code}** and tap **Approve**. This finishes by itself once approved; the code is valid for 10 minutes."
     }
   },
   "options": {

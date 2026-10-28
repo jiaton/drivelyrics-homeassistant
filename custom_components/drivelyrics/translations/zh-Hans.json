@@ -21,8 +21,7 @@
         }
       },
       "link": {
-        "title": "在 DriveLyrics 里同意",
-        "description": "打开 DriveLyrics，需要的话先登录，确认显示的码是 **{code}**，然后点 **同意**。这个窗口会自己继续。"
+        "title": "在 DriveLyrics 里同意"
       },
       "reauth_confirm": {
         "title": "重新关联 DriveLyrics",
@@ -43,6 +42,9 @@
       "player_gone": "这个媒体播放器已经不存在了。",
       "reauth_successful": "重新关联好了。",
       "reconfigure_successful": "已保存。"
+    },
+    "progress": {
+      "wait_for_approval": "打开 [DriveLyrics]({url})，需要的话先登录，确认显示的码是 **{code}**，然后点 **同意**。同意后这里会自己完成，10 分钟内有效。"
     }
   },
   "options": {

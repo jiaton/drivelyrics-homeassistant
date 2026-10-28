@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Mapping
-from contextlib import suppress
 from typing import Any
 
 import voluptuous as vol
@@ -22,7 +21,6 @@ from homeassistant.config_entries import (
 )
 from homeassistant.const import CONF_TOKEN
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.data_entry_flow import UnknownFlow
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import (
@@ -162,7 +160,11 @@ class DriveLyricsConfigFlow(ConfigFlow, domain=DOMAIN):
         return await self.async_step_link()
 
     async def async_step_link(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
-        """Wait while the user approves the link in DriveLyrics."""
+        """Wait while the user approves the link in DriveLyrics.
+
+        A progress step, like the GitHub integration's device flow: Home Assistant moves
+        on by itself when the wait ends, whether or not a dialog is open.
+        """
         if self._link is None:
             client = DriveLyricsClient(async_get_clientsession(self.hass), self._server)
             try:
@@ -174,15 +176,18 @@ class DriveLyricsConfigFlow(ConfigFlow, domain=DOMAIN):
                 self._async_wait_for_approval(client, self._link)
             )
 
-        if self._link_outcome is None:
-            return self.async_external_step(
+        assert self._link_task is not None
+        if not self._link_task.done():
+            return self.async_show_progress(
                 step_id="link",
-                url=self._link.verify_url,
-                description_placeholders={"code": self._link.code},
+                progress_action="wait_for_approval",
+                description_placeholders={"url": self._link.verify_url, "code": self._link.code},
+                progress_task=self._link_task,
             )
-        if self._link_outcome == "approved":
-            return self.async_external_step_done(next_step_id="finish")
-        return self.async_external_step_done(next_step_id=f"link_{self._link_outcome}")
+        outcome = self._link_outcome or "expired"
+        return self.async_show_progress_done(
+            next_step_id="finish" if outcome == "approved" else f"link_{outcome}"
+        )
 
     async def _async_wait_for_approval(self, client: DriveLyricsClient, link: LinkStarted) -> None:
         loop = asyncio.get_running_loop()
@@ -202,8 +207,6 @@ class DriveLyricsConfigFlow(ConfigFlow, domain=DOMAIN):
             outcome = status if status in ("approved", "denied") else "expired"
             break
         self._link_outcome = outcome
-        with suppress(UnknownFlow):  # the dialog was closed meanwhile
-            await self.hass.config_entries.flow.async_configure(flow_id=self.flow_id)
 
     async def async_step_link_denied(
         self, user_input: dict[str, Any] | None = None
