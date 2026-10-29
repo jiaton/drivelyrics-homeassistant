@@ -130,7 +130,7 @@
   "issues": {
     "feed_not_selected": {
       "title": "DriveLyrics 没有显示 Home Assistant 发来的歌",
-      "description": "Home Assistant 已经关联，但你的 DriveLyrics 屏幕显示的是 Spotify。在 DriveLyrics 里打开 设置 → 推送通道，在「正在播放来源」里选推送通道。"
+      "description": "Home Assistant 已经关联，但你的 DriveLyrics 屏幕显示的是 Spotify。在 DriveLyrics 里打开 设置 → 推送通道，在「正在播放来源」里选推送通道。这条提示只出现一次。"
     },
     "read_limit_hourly": {
       "title": "DriveLyrics 读取 {name} 已到每小时上限",

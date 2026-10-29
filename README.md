@@ -75,7 +75,8 @@ for the monthly one), not on every request. **Car reads this month** counts ever
 | Last request, Last request reason, Last update sent | When and why DriveLyrics last asked, when the answer went out (diagnostic). |
 | Requests since start | Disabled by default (diagnostic). |
 
-If your DriveLyrics screens are set to show Spotify instead, a repair issue says so.
+If your DriveLyrics screens are set to show Spotify instead, a repair issue says so — once.
+Switching to Spotify later on purpose brings no new notice.
 
 ## Self-hosted DriveLyrics
 

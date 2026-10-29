@@ -228,12 +228,24 @@ async def test_reconnects_after_a_dropped_stream(
         assert hass.states.get("binary_sensor.drivelyrics_car_connection").state == "on"
 
 
-async def test_repair_issue_while_the_feed_is_not_shown(
+async def test_told_once_when_the_feed_is_not_shown(
     hass: HomeAssistant, config_entry: MockConfigEntry, fake_client: FakeClient
 ) -> None:
+    issues = ir.async_get(hass)
     fake_client.me_result = Me(token_name="Home Assistant", feed_selected=False)
     await setup(hass, config_entry)
-    assert ir.async_get(hass).async_get_issue(DOMAIN, ISSUE_FEED_NOT_SELECTED)
+    assert issues.async_get_issue(DOMAIN, ISSUE_FEED_NOT_SELECTED)
+
+    fake_client.me_result = Me(token_name="Home Assistant", feed_selected=True)
+    assert await hass.config_entries.async_reload(config_entry.entry_id)
+    await hass.async_block_till_done()
+    assert issues.async_get_issue(DOMAIN, ISSUE_FEED_NOT_SELECTED) is None
+
+    # Back to Spotify (on purpose, say): not told again.
+    fake_client.me_result = Me(token_name="Home Assistant", feed_selected=False)
+    assert await hass.config_entries.async_reload(config_entry.entry_id)
+    await hass.async_block_till_done()
+    assert issues.async_get_issue(DOMAIN, ISSUE_FEED_NOT_SELECTED) is None
 
 
 async def test_unload_stops_everything(

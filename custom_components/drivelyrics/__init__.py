@@ -63,10 +63,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: DriveLyricsConfigEntry) 
         ) from err
 
     store = _store(hass, entry)
+    stored = await store.async_load() or {}
     limiter = ReadLimiter.restore(
         int(entry.options.get(CONF_READS_PER_HOUR, DEFAULT_READS_PER_HOUR)),
         int(entry.options.get(CONF_MONTHLY_READS, DEFAULT_MONTHLY_READS)),
-        await store.async_load(),
+        stored,
     )
     bridge = DriveLyricsBridge(
         hass,
@@ -77,6 +78,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: DriveLyricsConfigEntry) 
         push_on_change=entry.options.get(CONF_PUSH_ON_CHANGE, DEFAULT_PUSH_ON_CHANGE),
         limiter=limiter,
         store=store,
+        # Before 0.2.2 this wasn't stored: an issue still open means it was shown.
+        feed_hint_shown=bool(stored.get("feed_hint_shown"))
+        or ir.async_get(hass).async_get_issue(DOMAIN, ISSUE_FEED_NOT_SELECTED) is not None,
     )
     entry.runtime_data = bridge
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)

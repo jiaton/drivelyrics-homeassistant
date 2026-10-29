@@ -89,6 +89,7 @@ class DriveLyricsBridge:
         push_on_change: bool,
         limiter: ReadLimiter,
         store: Store[dict[str, Any]],
+        feed_hint_shown: bool,
     ) -> None:
         """Initialize."""
         self.hass = hass
@@ -99,6 +100,7 @@ class DriveLyricsBridge:
         self.push_on_change = push_on_change
         self.limiter = limiter
         self._store = store
+        self._feed_hint_shown = feed_hint_shown
         self.status = BridgeStatus()
         self._cancel_limit_recheck: CALLBACK_TYPE | None = None
         self._cancel_month_change: CALLBACK_TYPE | None = None
@@ -121,7 +123,10 @@ class DriveLyricsBridge:
 
     async def async_save(self) -> None:
         """Store the limiter now (on unload, so a reload starts from it)."""
-        await self._store.async_save(self.limiter.as_dict())
+        await self._store.async_save(self._stored())
+
+    def _stored(self) -> dict[str, Any]:
+        return self.limiter.as_dict() | {"feed_hint_shown": self._feed_hint_shown}
 
     @callback
     def async_add_listener(self, update: CALLBACK_TYPE) -> Callable[[], None]:
@@ -172,11 +177,15 @@ class DriveLyricsBridge:
         self._set(connected=True)
 
     async def _check_account(self) -> None:
-        """Raise a repair issue while the user's screens don't show the feed."""
+        """Tell the user once if their screens don't show the feed. Showing Spotify
+        can be on purpose, so after that first time it's theirs to choose, unsaid.
+        """
         me = await self.client.me()
         if me.feed_selected:
             ir.async_delete_issue(self.hass, DOMAIN, ISSUE_FEED_NOT_SELECTED)
-        else:
+        elif not self._feed_hint_shown:
+            self._feed_hint_shown = True
+            self._store.async_delay_save(self._stored, 10)
             ir.async_create_issue(
                 self.hass,
                 DOMAIN,
@@ -224,7 +233,7 @@ class DriveLyricsBridge:
             limited = self.limiter.check(now)
             if limited is None:
                 self.limiter.take(now)
-                self._store.async_delay_save(self.limiter.as_dict, 10)
+                self._store.async_delay_save(self._stored, 10)
             self._limit_changed(limited)
             if limited is None:
                 await self._refresh_player()
@@ -336,7 +345,7 @@ class DriveLyricsBridge:
             LOGGER.info(
                 "Read limit (%s) reached: answering without reading %s", limited, self.player
             )
-            self._store.async_delay_save(self.limiter.as_dict, 10)
+            self._store.async_delay_save(self._stored, 10)
         self._schedule_limit_timers(limited)
 
     @callback
