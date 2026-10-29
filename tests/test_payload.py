@@ -27,7 +27,7 @@ def test_tesla_fleet_player() -> None:
         "album": "自傳",
         "duration_ms": 367_000,
         "position_ms": 16_000,
-        "measured_at": round(state.last_reported.timestamp() * 1000),
+        "measured_at": round(state.last_reported.timestamp() * 1000) - 700,  # car's lag
         "source": "Spotify",
         "fetch_id": "f1",
     }

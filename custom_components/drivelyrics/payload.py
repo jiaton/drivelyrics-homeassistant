@@ -19,6 +19,11 @@ from homeassistant.core import State
 
 _TEXT_LIMIT = 300  # the server refuses longer fields
 _SOURCE_LIMIT = 40
+# A player that doesn't say when its position was read (Tesla Fleet) is behind by the
+# time we stamp it: the car reports whole seconds, cut off (about 0.5 s on average),
+# and the reading takes a moment to reach Home Assistant. Measured against Spotify's
+# own position on 2026-10-28: behind by 0.3-1.1 s, 0.73 s on average.
+_UNSTAMPED_LAG_MS = 700
 
 
 def build_payload(state: State | None, fetch_id: str | None = None) -> dict[str, Any]:
@@ -70,9 +75,9 @@ def _ms(seconds: Any) -> int | None:
 
 def _measured_at(state: State) -> int:
     """When the position was read. Players that report it say so; others (Tesla Fleet)
-    don't, and then it's when Home Assistant last received the state.
+    don't, and then it's a little before Home Assistant last received the state.
     """
     updated = state.attributes.get(ATTR_MEDIA_POSITION_UPDATED_AT)
     if isinstance(updated, datetime):
         return round(updated.timestamp() * 1000)
-    return round(state.last_reported.timestamp() * 1000)
+    return round(state.last_reported.timestamp() * 1000) - _UNSTAMPED_LAG_MS
